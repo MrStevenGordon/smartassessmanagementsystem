@@ -71,6 +71,48 @@ export async function createAcademicYear(
   redirect("/admin");
 }
 
+export async function updateClass(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+
+  if (!id || !name) {
+    return { error: "Class name is required." };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("classes")
+    .update({ name })
+    .eq("id", id);
+
+  if (error) {
+    return {
+      error:
+        error.code === "23505"
+          ? "A class with that name already exists for this year."
+          : "Could not update class: " + error.message,
+    };
+  }
+
+  revalidatePath("/admin/classes");
+  redirect("/admin/classes");
+}
+
+export async function deleteClass(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase.from("classes").delete().eq("id", id);
+
+  revalidatePath("/admin/classes");
+  redirect("/admin/classes");
+}
+
 export async function createClasses(
   _prevState: ActionState,
   formData: FormData

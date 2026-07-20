@@ -80,12 +80,13 @@ export default async function ClassesPage() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {gradeClasses.map((c) => (
-                    <span
+                    <Link
                       key={c.id}
-                      className="text-sm border border-zinc-200 rounded px-2 py-1"
+                      href={`/admin/classes/${c.id}/edit`}
+                      className="text-sm border border-zinc-200 rounded px-2 py-1 hover:border-zinc-400"
                     >
                       {c.name}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               )}
