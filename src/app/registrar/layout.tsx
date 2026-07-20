@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/app/actions";
 
 export default async function RegistrarLayout({
   children,
@@ -48,8 +49,13 @@ export default async function RegistrarLayout({
           </span>
           <span className="text-sm text-zinc-400 ml-2">Registrar</span>
         </div>
-        <nav className="flex gap-4 text-sm text-zinc-600">
+        <nav className="flex gap-4 text-sm text-zinc-600 items-center">
           <Link href="/registrar">Students</Link>
+          <form action={signOut}>
+            <button type="submit" className="hover:text-zinc-900">
+              Sign out
+            </button>
+          </form>
         </nav>
       </header>
       <main className="flex-1 px-6 py-8 max-w-5xl w-full mx-auto">

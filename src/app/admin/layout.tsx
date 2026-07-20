@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/app/actions";
 
 export default async function AdminLayout({
   children,
@@ -49,10 +50,15 @@ export default async function AdminLayout({
           </span>
           <span className="text-sm text-zinc-400 ml-2">Administration</span>
         </div>
-        <nav className="flex gap-4 text-sm text-zinc-600">
+        <nav className="flex gap-4 text-sm text-zinc-600 items-center">
           <Link href="/admin">Overview</Link>
           <Link href="/admin/classes">Classes</Link>
           <Link href="/admin/staff">Staff</Link>
+          <form action={signOut}>
+            <button type="submit" className="hover:text-zinc-900">
+              Sign out
+            </button>
+          </form>
         </nav>
       </header>
       <main className="flex-1 px-6 py-8 max-w-4xl w-full mx-auto">
