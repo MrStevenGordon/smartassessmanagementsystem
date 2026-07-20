@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function AdminLayout({
+export default async function RegistrarLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -17,20 +17,19 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
-  const { data: role } = await supabase
+  const { data: roles } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
-    .eq("role", "school_admin")
-    .maybeSingle();
+    .in("role", ["registrar", "school_admin"]);
 
-  if (!role) {
+  if (!roles || roles.length === 0) {
     redirect("/");
   }
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, school_id")
+    .select("school_id")
     .eq("id", user.id)
     .single();
 
@@ -47,15 +46,13 @@ export default async function AdminLayout({
           <span className="text-sm font-medium text-zinc-900">
             {school?.name}
           </span>
-          <span className="text-sm text-zinc-400 ml-2">Administration</span>
+          <span className="text-sm text-zinc-400 ml-2">Registrar</span>
         </div>
         <nav className="flex gap-4 text-sm text-zinc-600">
-          <Link href="/admin">Overview</Link>
-          <Link href="/admin/classes">Classes</Link>
-          <Link href="/admin/staff">Staff</Link>
+          <Link href="/registrar">Students</Link>
         </nav>
       </header>
-      <main className="flex-1 px-6 py-8 max-w-4xl w-full mx-auto">
+      <main className="flex-1 px-6 py-8 max-w-5xl w-full mx-auto">
         {children}
       </main>
     </div>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { generateTempPassword } from "@/lib/auth-helpers";
 
 const GRADE_LEVELS = [
   { name: "First Form", short_code: "7", sort_order: 1 },
@@ -22,16 +23,6 @@ export type CreateSchoolState = {
     tempPassword: string;
   };
 };
-
-function generateTempPassword() {
-  const chars =
-    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  let out = "";
-  for (let i = 0; i < 12; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-}
 
 export async function createSchool(
   _prevState: CreateSchoolState,
