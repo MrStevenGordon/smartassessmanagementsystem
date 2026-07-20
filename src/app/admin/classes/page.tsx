@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ClassesPage() {
@@ -83,9 +84,13 @@ export default async function ClassesPage() {
                     <Link
                       key={c.id}
                       href={`/admin/classes/${c.id}/edit`}
-                      className="text-sm border border-zinc-200 rounded px-2 py-1 hover:border-zinc-400"
+                      className="group flex items-center gap-1.5 text-sm border border-zinc-200 rounded px-2 py-1 hover:border-zinc-400 hover:bg-zinc-50"
                     >
                       {c.name}
+                      <Pencil
+                        size={12}
+                        className="text-zinc-300 group-hover:text-zinc-500"
+                      />
                     </Link>
                   ))}
                 </div>
