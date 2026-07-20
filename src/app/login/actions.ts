@@ -39,5 +39,18 @@ export async function login(
     redirect("/platform");
   }
 
+  const { data: roles } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", data.user.id);
+
+  const roleNames = (roles ?? []).map((r) => r.role);
+
+  if (roleNames.includes("school_admin")) {
+    redirect("/admin");
+  }
+
+  // Other panels (registrar, teacher, parent, student, principal,
+  // grade_supervisor) land here as each is built.
   redirect("/");
 }
