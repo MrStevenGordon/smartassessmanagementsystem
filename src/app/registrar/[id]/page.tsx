@@ -10,6 +10,23 @@ const STATUS_LABELS: Record<string, string> = {
   transferred: "Transferred",
 };
 
+const RELATIONSHIP_LABELS: Record<string, string> = {
+  mother: "Mother",
+  father: "Father",
+  guardian: "Guardian",
+};
+
+const MEDICAL_CONDITION_LABELS: Record<string, string> = {
+  hay_fever: "Hay fever",
+  asthma: "Asthma",
+  diabetes: "Diabetes",
+  sickle_cell: "Sickle cell",
+  heart_disease: "Heart disease",
+  epilepsy: "Epilepsy",
+  liver_kidney_disease: "Liver/kidney disease",
+  anemia: "Anemia",
+};
+
 export default async function StudentDetailPage({
   params,
 }: {
@@ -21,7 +38,13 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from("students")
     .select(
-      "id, student_number, status, date_of_birth, sex, address, previous_school, profiles(full_name, email), enrollments(status, classes(name, grade_levels(name)))"
+      `id, student_number, status, first_name, middle_name, last_name,
+       date_of_birth, sex, place_of_birth, address, address_while_attending,
+       distance_from_school, entry_type, previous_school, on_path_programme,
+       path_family_number, national_student_registration_number,
+       family_doctor_name, medical_conditions, medical_conditions_other,
+       profiles(email),
+       enrollments(status, classes(name, grade_levels(name)))`
     )
     .eq("id", id)
     .single();
@@ -30,15 +53,19 @@ export default async function StudentDetailPage({
     notFound();
   }
 
-  const { data: guardianLinks } = await supabase
+  const { data: guardians } = await supabase
     .from("student_guardians")
-    .select("relationship, is_primary_contact, profiles(full_name, email, phone)")
+    .select(
+      "relationship_type, full_name, address, occupation, phone1, phone2, email, is_primary_contact"
+    )
     .eq("student_id", id);
 
-  const profile = student.profiles as unknown as {
-    full_name: string;
-    email: string;
-  } | null;
+  const { data: authorizedContacts } = await supabase
+    .from("authorized_contacts")
+    .select("name, relationship, address, phone")
+    .eq("student_id", id);
+
+  const profile = student.profiles as unknown as { email: string } | null;
 
   const enrollment = (
     student.enrollments as unknown as {
@@ -47,13 +74,15 @@ export default async function StudentDetailPage({
     }[]
   )?.find((e) => e.status === "active");
 
+  const fullName = [student.first_name, student.middle_name, student.last_name]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-start justify-between mb-6">
+    <div className="max-w-2xl space-y-8">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-medium text-zinc-900">
-            {profile?.full_name}
-          </h1>
+          <h1 className="text-xl font-medium text-zinc-900">{fullName}</h1>
           <p className="text-sm text-zinc-500">
             {student.student_number} · {enrollment?.classes?.grade_levels?.name}{" "}
             {enrollment?.classes?.name}
@@ -65,7 +94,7 @@ export default async function StudentDetailPage({
       </div>
 
       {student.status === "pending" && (
-        <form action={activateStudent} className="mb-6">
+        <form action={activateStudent}>
           <input type="hidden" name="student_id" value={student.id} />
           <button
             type="submit"
@@ -79,59 +108,135 @@ export default async function StudentDetailPage({
         </form>
       )}
 
-      <div className="border border-zinc-200 rounded-md p-4 mb-6 text-sm space-y-2">
-        <div className="flex justify-between">
-          <span className="text-zinc-500">Date of birth</span>
-          <span className="text-zinc-900">{student.date_of_birth}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-zinc-500">Sex</span>
-          <span className="text-zinc-900">{student.sex ?? "—"}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-zinc-500">Address</span>
-          <span className="text-zinc-900">{student.address ?? "—"}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-zinc-500">Previous school</span>
-          <span className="text-zinc-900">
-            {student.previous_school ?? "—"}
-          </span>
+      <div>
+        <h2 className="text-sm font-medium text-zinc-700 mb-2">
+          Student information
+        </h2>
+        <div className="border border-zinc-200 rounded-md p-4 text-sm space-y-2">
+          <Row label="Date of birth" value={student.date_of_birth} />
+          <Row label="Gender" value={student.sex ?? "—"} />
+          <Row label="Place of birth" value={student.place_of_birth ?? "—"} />
+          <Row label="Address" value={student.address ?? "—"} />
+          <Row
+            label="Address while attending"
+            value={student.address_while_attending ?? "—"}
+          />
+          <Row
+            label="Distance from school"
+            value={student.distance_from_school ?? "—"}
+          />
+          <Row label="Entry type" value={student.entry_type ?? "—"} />
+          <Row
+            label="Previous school"
+            value={student.previous_school ?? "—"}
+          />
+          <Row
+            label="PATH programme"
+            value={student.on_path_programme ? "Yes" : "No"}
+          />
+          {student.on_path_programme && (
+            <Row
+              label="PATH family number"
+              value={student.path_family_number ?? "—"}
+            />
+          )}
+          <Row
+            label="National student registration number"
+            value={student.national_student_registration_number ?? "—"}
+          />
         </div>
       </div>
 
-      <h2 className="text-sm font-medium text-zinc-700 mb-2">
-        Parents / guardians
-      </h2>
-      <div className="space-y-2">
-        {(guardianLinks ?? []).map((g, i) => {
-          const gp = g.profiles as unknown as {
-            full_name: string;
-            email: string;
-            phone: string | null;
-          } | null;
-          return (
+      <div>
+        <h2 className="text-sm font-medium text-zinc-700 mb-2">
+          Parents / guardians
+        </h2>
+        <div className="space-y-2">
+          {(guardians ?? []).map((g, i) => (
             <div
               key={i}
-              className="border border-zinc-200 rounded-md p-3 text-sm flex justify-between"
+              className="border border-zinc-200 rounded-md p-3 text-sm"
             >
-              <div>
-                <p className="text-zinc-900">
-                  {gp?.full_name}{" "}
+              <div className="flex justify-between mb-1">
+                <p className="text-zinc-900 font-medium">
+                  {RELATIONSHIP_LABELS[g.relationship_type]}: {g.full_name}
                   {g.is_primary_contact && (
-                    <span className="text-xs text-zinc-500">(primary)</span>
+                    <span className="text-xs text-zinc-500 font-normal ml-2">
+                      (primary contact)
+                    </span>
                   )}
                 </p>
-                <p className="text-zinc-500">{g.relationship}</p>
               </div>
-              <div className="text-right text-zinc-500">
-                <p>{gp?.email}</p>
-                <p>{gp?.phone}</p>
-              </div>
+              <p className="text-zinc-500">{g.address}</p>
+              <p className="text-zinc-500">
+                {g.occupation && `${g.occupation} · `}
+                {g.phone1}
+                {g.phone2 && ` / ${g.phone2}`}
+              </p>
+              <p className="text-zinc-500">{g.email}</p>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
+
+      <div>
+        <h2 className="text-sm font-medium text-zinc-700 mb-2">
+          Medical information
+        </h2>
+        <div className="border border-zinc-200 rounded-md p-4 text-sm space-y-2">
+          <Row
+            label="Family doctor"
+            value={student.family_doctor_name ?? "—"}
+          />
+          <Row
+            label="Conditions"
+            value={
+              (student.medical_conditions as string[])?.length
+                ? (student.medical_conditions as string[])
+                    .map((c) => MEDICAL_CONDITION_LABELS[c] ?? c)
+                    .join(", ")
+                : "None reported"
+            }
+          />
+          {student.medical_conditions_other && (
+            <Row label="Other" value={student.medical_conditions_other} />
+          )}
+        </div>
+      </div>
+
+      {authorizedContacts && authorizedContacts.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium text-zinc-700 mb-2">
+            Authorized contacts
+          </h2>
+          <div className="space-y-2">
+            {authorizedContacts.map((c, i) => (
+              <div
+                key={i}
+                className="border border-zinc-200 rounded-md p-3 text-sm flex justify-between"
+              >
+                <div>
+                  <p className="text-zinc-900">{c.name}</p>
+                  <p className="text-zinc-500">{c.relationship}</p>
+                </div>
+                <div className="text-right text-zinc-500">
+                  <p>{c.address}</p>
+                  <p>{c.phone}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-zinc-500">{label}</span>
+      <span className="text-zinc-900">{value}</span>
     </div>
   );
 }
