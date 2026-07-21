@@ -39,7 +39,8 @@ export default async function StudentDetailPage({
     .from("students")
     .select(
       `id, student_number, status, first_name, middle_name, last_name,
-       date_of_birth, sex, place_of_birth, address, address_while_attending,
+       date_of_birth, sex, place_of_birth, address, city_or_town, parish,
+       address_while_attending,
        distance_from_school, entry_type, previous_school, on_path_programme,
        path_family_number, national_student_registration_number,
        family_doctor_name, medical_conditions, medical_conditions_other,
@@ -117,6 +118,8 @@ export default async function StudentDetailPage({
           <Row label="Gender" value={student.sex ?? "—"} />
           <Row label="Place of birth" value={student.place_of_birth ?? "—"} />
           <Row label="Address" value={student.address ?? "—"} />
+          <Row label="Town/city" value={student.city_or_town ?? "—"} />
+          <Row label="Parish" value={student.parish ?? "—"} />
           <Row
             label="Address while attending"
             value={student.address_while_attending ?? "—"}

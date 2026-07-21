@@ -45,6 +45,8 @@ export async function registerStudent(
   const sex = String(formData.get("sex") || "");
   const placeOfBirth = String(formData.get("place_of_birth") || "").trim();
   const address = String(formData.get("address") || "").trim();
+  const cityOrTown = String(formData.get("city_or_town") || "").trim();
+  const parish = String(formData.get("parish") || "") || null;
   const addressWhileAttending = String(
     formData.get("address_while_attending") || ""
   ).trim();
@@ -246,6 +248,8 @@ export async function registerStudent(
     sex: sex || null,
     place_of_birth: placeOfBirth || null,
     address: address || null,
+    city_or_town: cityOrTown || null,
+    parish: parish,
     address_while_attending: addressWhileAttending || null,
     distance_from_school: distanceFromSchool || null,
     entry_type: entryType,
