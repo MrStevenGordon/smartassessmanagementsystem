@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { signOut } from "@/app/actions";
 import SignupForm from "./form";
 
 export default async function ApplyPage({
@@ -34,15 +35,38 @@ export default async function ApplyPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", user.id)
-      .single();
+    const { data: parentRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("school_id", school.id)
+      .eq("role", "parent")
+      .maybeSingle();
 
-    if (profile?.school_id === school.id) {
+    if (parentRole) {
       redirect("/parent");
     }
+
+    // Signed in as something else (registrar, admin, a different school's
+    // parent, etc.) — don't silently bounce them, since that's confusing.
+    return (
+      <div className="flex flex-1 items-center justify-center px-4 py-12 text-center">
+        <div className="max-w-sm">
+          <p className="text-sm text-zinc-600 mb-4">
+            You&apos;re signed in with an account that doesn&apos;t have
+            parent access here. Log out to apply as a parent.
+          </p>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="text-sm underline text-zinc-700"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   return (
