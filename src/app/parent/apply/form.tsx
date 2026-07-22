@@ -36,6 +36,7 @@ const STEPS = [
   { title: "Family", description: "Mother, father, and/or guardian" },
   { title: "Health", description: "Doctor and known conditions" },
   { title: "Contacts", description: "Authorized pickup/discussion contacts" },
+  { title: "Review", description: "Confirm and submit" },
 ];
 
 const inputClass =
@@ -848,7 +849,15 @@ export default function ApplicationForm({
               </div>
             </div>
           ))}
+        </div>
 
+        <div className={step === 4 ? "space-y-4" : "hidden"}>
+          <div className="border border-zinc-200 rounded-md p-4">
+            <p className="text-sm text-zinc-700">
+              Ready to submit this application for review. A registrar will
+              check it and assign a grade and class.
+            </p>
+          </div>
           {state.error && <p className="text-sm text-red-600">{state.error}</p>}
         </div>
 
