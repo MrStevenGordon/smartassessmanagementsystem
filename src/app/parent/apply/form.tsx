@@ -3,6 +3,10 @@
 import { useActionState, useRef, useState } from "react";
 import { saveApplication, type ActionState } from "../actions";
 import { lookupSibling } from "@/lib/sibling-lookup";
+import {
+  parseApplicationForm,
+  type ParsedApplication,
+} from "@/lib/registration-parsing";
 
 const initialState: ActionState = { error: null };
 
@@ -106,6 +110,16 @@ function splitName(fullName?: string) {
   return { first: parts[0] || "", last: parts.slice(1).join(" ") };
 }
 
+function ReviewRow({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-zinc-500 shrink-0">{label}</span>
+      <span className="text-zinc-900 text-right">{value}</span>
+    </div>
+  );
+}
+
 export default function ApplicationForm({
   submissionId,
   defaults,
@@ -185,6 +199,10 @@ export default function ApplicationForm({
     setTimeout(() => setNavLocked(false), 400);
   }
 
+  const [reviewData, setReviewData] = useState<ParsedApplication | null>(
+    null
+  );
+
   function goNext() {
     if (step === 0) {
       if (!formRef.current?.reportValidity()) return;
@@ -202,7 +220,11 @@ export default function ApplicationForm({
       return;
     }
     setFamilyError("");
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    const next = Math.min(step + 1, STEPS.length - 1);
+    if (next === STEPS.length - 1 && formRef.current) {
+      setReviewData(parseApplicationForm(new FormData(formRef.current)));
+    }
+    setStep(next);
     lockNavBriefly();
   }
 
@@ -862,13 +884,158 @@ export default function ApplicationForm({
           ))}
         </div>
 
-        <div className={step === 4 ? "space-y-4" : "hidden"}>
-          <div className="border border-zinc-200 rounded-md p-4">
-            <p className="text-sm text-zinc-700">
-              Ready to submit this application for review. A registrar will
-              check it and assign a grade and class.
-            </p>
-          </div>
+        <div className={step === 4 ? "space-y-6" : "hidden"}>
+          {reviewData && (
+            <>
+              <section>
+                <h3 className="text-sm font-medium text-zinc-800 mb-2">
+                  Student
+                </h3>
+                <div className="border border-zinc-200 rounded-md p-4 text-sm space-y-1.5">
+                  <ReviewRow
+                    label="Name"
+                    value={[
+                      reviewData.firstName,
+                      reviewData.middleName,
+                      reviewData.lastName,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  />
+                  <ReviewRow label="Date of birth" value={reviewData.dateOfBirth} />
+                  <ReviewRow label="Gender" value={reviewData.sex} />
+                  <ReviewRow label="Place of birth" value={reviewData.placeOfBirth} />
+                  <ReviewRow
+                    label="Address"
+                    value={[
+                      reviewData.address,
+                      reviewData.cityOrTown,
+                      reviewData.parish,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  />
+                  <ReviewRow
+                    label="Entry type"
+                    value={
+                      ENTRY_TYPES.find((t) => t.value === reviewData.entryType)
+                        ?.label
+                    }
+                  />
+                  <ReviewRow label="Previous school" value={reviewData.previousSchool} />
+                  <ReviewRow
+                    label="PATH programme"
+                    value={reviewData.onPathProgramme ? "Yes" : "No"}
+                  />
+                  <ReviewRow
+                    label="National student registration number"
+                    value={reviewData.nsrn}
+                  />
+                </div>
+              </section>
+
+              <section>
+                <h3 className="text-sm font-medium text-zinc-800 mb-2">
+                  Family
+                </h3>
+                <div className="space-y-2">
+                  {reviewData.guardianBlocks.map((g, i) => (
+                    <div
+                      key={i}
+                      className="border border-zinc-200 rounded-md p-4 text-sm"
+                    >
+                      <p className="text-zinc-900 font-medium capitalize mb-1">
+                        {g.relationshipType}: {g.fullName}
+                        {g.relationshipType === reviewData.primaryContact && (
+                          <span className="text-xs text-zinc-500 font-normal ml-2">
+                            (primary contact)
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-zinc-500">{g.address}</p>
+                      <p className="text-zinc-500">
+                        {g.occupation && `${g.occupation} · `}
+                        {g.phone1}
+                        {g.phone2 && ` / ${g.phone2}`}
+                      </p>
+                      <p className="text-zinc-500">{g.email}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {reviewData.siblings.length > 0 && (
+                <section>
+                  <h3 className="text-sm font-medium text-zinc-800 mb-2">
+                    Siblings
+                  </h3>
+                  <div className="space-y-2">
+                    {reviewData.siblings.map((s, i) => (
+                      <div
+                        key={i}
+                        className="border border-zinc-200 rounded-md p-3 text-sm flex justify-between"
+                      >
+                        <span className="text-zinc-900">{s.name}</span>
+                        <span className="text-zinc-500">
+                          {s.studentNumber}
+                          {s.matchedStudentId ? " · verified" : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section>
+                <h3 className="text-sm font-medium text-zinc-800 mb-2">
+                  Health
+                </h3>
+                <div className="border border-zinc-200 rounded-md p-4 text-sm space-y-1.5">
+                  <ReviewRow label="Family doctor" value={reviewData.familyDoctorName} />
+                  <ReviewRow
+                    label="Conditions"
+                    value={
+                      reviewData.medicalConditions.length > 0
+                        ? reviewData.medicalConditions
+                            .map(
+                              (c) =>
+                                MEDICAL_CONDITIONS.find((m) => m.key === c)
+                                  ?.label ?? c
+                            )
+                            .join(", ")
+                        : "None reported"
+                    }
+                  />
+                  <ReviewRow label="Other" value={reviewData.medicalConditionsOther} />
+                </div>
+              </section>
+
+              {reviewData.authorizedContacts.length > 0 && (
+                <section>
+                  <h3 className="text-sm font-medium text-zinc-800 mb-2">
+                    Authorized contacts
+                  </h3>
+                  <div className="space-y-2">
+                    {reviewData.authorizedContacts.map((c, i) => (
+                      <div
+                        key={i}
+                        className="border border-zinc-200 rounded-md p-3 text-sm flex justify-between"
+                      >
+                        <div>
+                          <p className="text-zinc-900">{c.name}</p>
+                          <p className="text-zinc-500">{c.relationship}</p>
+                        </div>
+                        <div className="text-right text-zinc-500">
+                          <p>{c.address}</p>
+                          <p>{c.phone}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
           {state.error && <p className="text-sm text-red-600">{state.error}</p>}
         </div>
 
