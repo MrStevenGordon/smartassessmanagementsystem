@@ -176,6 +176,15 @@ export default function ApplicationForm({
     (r) => r.studentNumber.trim().length > 0 && r.status !== "found"
   );
 
+  // Brief guard after any step change: a fast double-click meant for the
+  // previous screen's button can otherwise land on the newly-rendered
+  // button in that same spot (e.g. hitting "Submit" right after "Continue").
+  const [navLocked, setNavLocked] = useState(false);
+  function lockNavBriefly() {
+    setNavLocked(true);
+    setTimeout(() => setNavLocked(false), 400);
+  }
+
   function goNext() {
     if (step === 0) {
       if (!formRef.current?.reportValidity()) return;
@@ -194,10 +203,12 @@ export default function ApplicationForm({
     }
     setFamilyError("");
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    lockNavBriefly();
   }
 
   function goBack() {
     setStep((s) => Math.max(s - 1, 0));
+    lockNavBriefly();
   }
 
   return (
@@ -874,14 +885,16 @@ export default function ApplicationForm({
             <button
               type="button"
               onClick={goNext}
-              className="bg-zinc-900 text-white rounded-md px-4 py-2 text-sm"
+              disabled={navLocked}
+              className="bg-zinc-900 text-white rounded-md px-4 py-2 text-sm disabled:opacity-50"
             >
               Continue
             </button>
           ) : (
             <button
-              type="submit"
-              disabled={pending}
+              type="button"
+              disabled={pending || navLocked}
+              onClick={() => formRef.current?.requestSubmit()}
               className="bg-zinc-900 text-white rounded-md px-4 py-2 text-sm disabled:opacity-50"
             >
               {pending
