@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import { saveApplication, type ActionState } from "../actions";
+import { lookupSibling } from "@/lib/sibling-lookup";
 
 const initialState: ActionState = { error: null };
 
@@ -58,6 +59,20 @@ type ContactDefault = {
   phone?: string;
 };
 
+type SiblingDefault = {
+  name: string;
+  student_number: string;
+  matched_student_id: string | null;
+};
+
+type SiblingRow = {
+  name: string;
+  studentNumber: string;
+  matchedId: string | null;
+  status: "idle" | "checking" | "found" | "not_found";
+  matchedName?: string;
+};
+
 export type ApplicationDefaults = {
   first_name?: string;
   middle_name?: string;
@@ -81,6 +96,7 @@ export type ApplicationDefaults = {
   primary_contact?: string;
   guardians?: GuardianDefault[];
   authorized_contacts?: ContactDefault[];
+  siblings?: SiblingDefault[];
 };
 
 function splitName(fullName?: string) {
@@ -124,6 +140,41 @@ export default function ApplicationForm({
 
   const contacts = defaults?.authorized_contacts ?? [];
 
+  const [siblings, setSiblings] = useState<SiblingRow[]>(() => {
+    const rows: SiblingRow[] = [0, 1, 2].map((i) => {
+      const d = defaults?.siblings?.[i];
+      return {
+        name: d?.name ?? "",
+        studentNumber: d?.student_number ?? "",
+        matchedId: d?.matched_student_id ?? null,
+        status: d?.matched_student_id ? "found" : "idle",
+      };
+    });
+    return rows;
+  });
+
+  function updateSibling(index: number, patch: Partial<SiblingRow>) {
+    setSiblings((rows) =>
+      rows.map((r, i) => (i === index ? { ...r, ...patch } : r))
+    );
+  }
+
+  async function checkSibling(index: number) {
+    const row = siblings[index];
+    if (!row.studentNumber.trim()) return;
+    updateSibling(index, { status: "checking" });
+    const result = await lookupSibling(row.studentNumber);
+    updateSibling(index, {
+      status: result.found ? "found" : "not_found",
+      matchedId: result.found ? result.studentId! : null,
+      matchedName: result.fullName,
+    });
+  }
+
+  const hasUnresolvedSibling = siblings.some(
+    (r) => r.studentNumber.trim().length > 0 && r.status !== "found"
+  );
+
   function goNext() {
     if (step === 0) {
       if (!formRef.current?.reportValidity()) return;
@@ -131,6 +182,12 @@ export default function ApplicationForm({
     if (step === 1 && !anyGuardianFilled) {
       setFamilyError(
         "Fill in at least one of Mother, Father, or Guardian before continuing."
+      );
+      return;
+    }
+    if (step === 1 && hasUnresolvedSibling) {
+      setFamilyError(
+        "Check or remove the sibling entry before continuing — it hasn't been verified."
       );
       return;
     }
@@ -179,7 +236,16 @@ export default function ApplicationForm({
 
       <p className="text-sm text-zinc-500 mb-6">{STEPS[step].description}</p>
 
-      <form ref={formRef} action={formAction}>
+      <form
+        ref={formRef}
+        action={formAction}
+        onSubmit={(e) => {
+          if (step !== STEPS.length - 1) {
+            e.preventDefault();
+            goNext();
+          }
+        }}
+      >
         {submissionId && (
           <input type="hidden" name="submission_id" value={submissionId} />
         )}
@@ -613,6 +679,85 @@ export default function ApplicationForm({
           )}
 
           {familyError && <p className="text-sm text-red-600">{familyError}</p>}
+
+          <div className="border-t border-zinc-200 pt-4">
+            <h3 className="text-sm font-medium text-zinc-800 mb-1">
+              Siblings currently at this school
+            </h3>
+            <p className="text-xs text-zinc-500 mb-3">
+              If a brother or sister already attends (or has graduated),
+              enter their student ID and check it — this helps us connect
+              your family&apos;s records.
+            </p>
+
+            {siblings.map((row, i) => (
+              <div
+                key={i}
+                className="border border-zinc-200 rounded-md p-3 mb-2 space-y-2"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    placeholder="Sibling's name"
+                    value={row.name}
+                    onChange={(e) =>
+                      updateSibling(i, { name: e.target.value })
+                    }
+                    className={inputClass}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Student ID#"
+                      value={row.studentNumber}
+                      onChange={(e) =>
+                        updateSibling(i, {
+                          studentNumber: e.target.value,
+                          status: "idle",
+                          matchedId: null,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => checkSibling(i)}
+                      disabled={
+                        !row.studentNumber.trim() || row.status === "checking"
+                      }
+                      className="text-sm border border-zinc-300 rounded-md px-3 py-2 whitespace-nowrap disabled:opacity-50"
+                    >
+                      {row.status === "checking" ? "Checking..." : "Check"}
+                    </button>
+                  </div>
+                </div>
+                {row.status === "found" && (
+                  <p className="text-xs text-emerald-700">
+                    Found: {row.matchedName}
+                  </p>
+                )}
+                {row.status === "not_found" && (
+                  <p className="text-xs text-red-600">
+                    No active or graduated student found with that ID.
+                    Double-check it, or clear this row.
+                  </p>
+                )}
+                <input
+                  type="hidden"
+                  name={`sibling_${i}_name`}
+                  value={row.name}
+                />
+                <input
+                  type="hidden"
+                  name={`sibling_${i}_student_number`}
+                  value={row.studentNumber}
+                />
+                <input
+                  type="hidden"
+                  name={`sibling_${i}_matched_id`}
+                  value={row.matchedId ?? ""}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className={step === 2 ? "space-y-4" : "hidden"}>

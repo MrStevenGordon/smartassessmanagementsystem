@@ -64,6 +64,11 @@ export async function saveApplication(
     guardians: parsed.guardianBlocks,
     primary_contact: parsed.primaryContact,
     authorized_contacts: parsed.authorizedContacts,
+    siblings: parsed.siblings.map((s) => ({
+      name: s.name,
+      student_number: s.studentNumber,
+      matched_student_id: s.matchedStudentId,
+    })),
   };
 
   if (submissionId) {

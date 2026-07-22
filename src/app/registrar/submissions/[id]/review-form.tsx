@@ -6,6 +6,7 @@ import {
   declineSubmission,
   type ActionState,
 } from "../actions";
+import { lookupSibling } from "@/lib/sibling-lookup";
 
 const initialState: ActionState = { error: null };
 
@@ -55,6 +56,21 @@ type ContactRow = {
   phone?: string;
 };
 
+type SiblingDefault = {
+  name?: string;
+  student_number?: string;
+  matched_student_id?: string | null;
+};
+
+type SiblingRow = {
+  name: string;
+  studentNumber: string;
+  matchedId: string | null;
+  status: "idle" | "checking" | "found" | "not_found";
+  matchedName?: string;
+  override: boolean;
+};
+
 function splitName(fullName?: string) {
   if (!fullName) return { first: "", last: "" };
   const parts = fullName.trim().split(/\s+/);
@@ -92,6 +108,38 @@ export default function ReviewForm({
     (c) => c.grade_level_id === gradeLevelId
   );
   const isPending = submission.status === "submitted";
+
+  const [siblings, setSiblings] = useState<SiblingRow[]>(() => {
+    const stored: SiblingDefault[] = submission.siblings ?? [];
+    return [0, 1, 2].map((i) => {
+      const d = stored[i];
+      return {
+        name: d?.name ?? "",
+        studentNumber: d?.student_number ?? "",
+        matchedId: d?.matched_student_id ?? null,
+        status: d?.matched_student_id ? "found" : "idle",
+        override: false,
+      };
+    });
+  });
+
+  function updateSibling(index: number, patch: Partial<SiblingRow>) {
+    setSiblings((rows) =>
+      rows.map((r, i) => (i === index ? { ...r, ...patch } : r))
+    );
+  }
+
+  async function checkSibling(index: number) {
+    const row = siblings[index];
+    if (!row.studentNumber.trim()) return;
+    updateSibling(index, { status: "checking" });
+    const result = await lookupSibling(row.studentNumber);
+    updateSibling(index, {
+      status: result.found ? "found" : "not_found",
+      matchedId: result.found ? result.studentId! : null,
+      matchedName: result.fullName,
+    });
+  }
 
   return (
     <div className="max-w-2xl">
@@ -593,6 +641,83 @@ export default function ReviewForm({
                   placeholder="Phone"
                   defaultValue={contacts[i]?.phone}
                   className={inputClass}
+                />
+              </div>
+            ))}
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-sm font-medium text-zinc-700 border-b border-zinc-200 pb-2">
+              Siblings
+            </h2>
+            {siblings.map((row, i) => (
+              <div
+                key={i}
+                className="border border-zinc-200 rounded-md p-3 space-y-2"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    name={`sibling_${i}_name`}
+                    placeholder="Sibling's name"
+                    value={row.name}
+                    onChange={(e) =>
+                      updateSibling(i, { name: e.target.value })
+                    }
+                    className={inputClass}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      name={`sibling_${i}_student_number`}
+                      placeholder="Student ID#"
+                      value={row.studentNumber}
+                      onChange={(e) =>
+                        updateSibling(i, {
+                          studentNumber: e.target.value,
+                          status: "idle",
+                          matchedId: null,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => checkSibling(i)}
+                      disabled={
+                        !row.studentNumber.trim() || row.status === "checking"
+                      }
+                      className="text-sm border border-zinc-300 rounded-md px-3 py-2 whitespace-nowrap disabled:opacity-50"
+                    >
+                      {row.status === "checking" ? "Checking..." : "Check"}
+                    </button>
+                  </div>
+                </div>
+                {row.status === "found" && (
+                  <p className="text-xs text-emerald-700">
+                    Found: {row.matchedName}
+                  </p>
+                )}
+                {row.status === "not_found" && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-red-600">
+                      No active or graduated student found with that ID.
+                    </p>
+                    <label className="flex items-center gap-1.5 text-xs text-zinc-600">
+                      <input
+                        type="checkbox"
+                        name={`sibling_${i}_override`}
+                        checked={row.override}
+                        onChange={(e) =>
+                          updateSibling(i, { override: e.target.checked })
+                        }
+                      />
+                      Accept anyway
+                    </label>
+                  </div>
+                )}
+                <input
+                  type="hidden"
+                  name={`sibling_${i}_matched_id`}
+                  value={row.matchedId ?? ""}
                 />
               </div>
             ))}

@@ -66,6 +66,16 @@ export default async function StudentDetailPage({
     .select("name, relationship, address, phone")
     .eq("student_id", id);
 
+  const { data: siblingLinksAsStudent } = await supabase
+    .from("student_siblings")
+    .select("sibling_student_id, students!student_siblings_sibling_student_id_fkey(student_number, profiles(full_name))")
+    .eq("student_id", id);
+
+  const { data: siblingLinksAsSibling } = await supabase
+    .from("student_siblings")
+    .select("student_id, students!student_siblings_student_id_fkey(student_number, profiles(full_name))")
+    .eq("sibling_student_id", id);
+
   const profile = student.profiles as unknown as { email: string } | null;
 
   const enrollment = (
@@ -231,6 +241,52 @@ export default async function StudentDetailPage({
           </div>
         </div>
       )}
+
+      {(() => {
+        const siblingRows = [
+          ...(siblingLinksAsStudent ?? []).map((s) => {
+            const sib = s.students as unknown as {
+              student_number: string;
+              profiles: { full_name: string } | null;
+            } | null;
+            return {
+              name: sib?.profiles?.full_name,
+              studentNumber: sib?.student_number,
+            };
+          }),
+          ...(siblingLinksAsSibling ?? []).map((s) => {
+            const sib = s.students as unknown as {
+              student_number: string;
+              profiles: { full_name: string } | null;
+            } | null;
+            return {
+              name: sib?.profiles?.full_name,
+              studentNumber: sib?.student_number,
+            };
+          }),
+        ];
+
+        if (siblingRows.length === 0) return null;
+
+        return (
+          <div>
+            <h2 className="text-sm font-medium text-zinc-700 mb-2">
+              Linked siblings
+            </h2>
+            <div className="space-y-2">
+              {siblingRows.map((s, i) => (
+                <div
+                  key={i}
+                  className="border border-zinc-200 rounded-md p-3 text-sm flex justify-between"
+                >
+                  <span className="text-zinc-900">{s.name}</span>
+                  <span className="text-zinc-500">{s.studentNumber}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

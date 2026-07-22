@@ -267,6 +267,28 @@ export async function approveSubmission(
     }
   }
 
+  const matchedSiblingIds = parsed.siblings
+    .map((s) => s.matchedStudentId)
+    .filter((id): id is string => !!id);
+
+  if (matchedSiblingIds.length > 0) {
+    const { error: siblingsError } = await admin.from("student_siblings").insert(
+      matchedSiblingIds.map((siblingId) => ({
+        school_id: schoolId,
+        student_id: studentAuth.user.id,
+        sibling_student_id: siblingId,
+      }))
+    );
+
+    if (siblingsError) {
+      return {
+        error:
+          "Student registered, but linking siblings failed: " +
+          siblingsError.message,
+      };
+    }
+  }
+
   await supabase
     .from("registration_submissions")
     .update({

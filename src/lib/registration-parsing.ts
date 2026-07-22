@@ -15,6 +15,12 @@ export type AuthorizedContact = {
   phone: string;
 };
 
+export type SiblingEntry = {
+  name: string;
+  studentNumber: string;
+  matchedStudentId: string | null;
+};
+
 export const MEDICAL_CONDITION_KEYS = [
   "hay_fever",
   "asthma",
@@ -49,6 +55,7 @@ export type ParsedApplication = {
   medicalConditionsOther: string;
   familyDoctorName: string;
   authorizedContacts: AuthorizedContact[];
+  siblings: SiblingEntry[];
   error: string | null;
 };
 
@@ -167,6 +174,25 @@ export function parseApplicationForm(formData: FormData): ParsedApplication {
     }
   }
 
+  const siblings: SiblingEntry[] = [];
+  for (let i = 0; i < 3; i++) {
+    const name = String(formData.get(`sibling_${i}_name`) || "").trim();
+    const studentNumber = String(
+      formData.get(`sibling_${i}_student_number`) || ""
+    ).trim();
+    if (name || studentNumber) {
+      const matchedStudentId =
+        String(formData.get(`sibling_${i}_matched_id`) || "") || null;
+      const overridden = formData.get(`sibling_${i}_override`) === "on";
+
+      if (studentNumber && !matchedStudentId && !overridden && !error) {
+        error = `Sibling #${i + 1}'s student ID could not be verified. Remove it, correct it, or confirm the override.`;
+      }
+
+      siblings.push({ name, studentNumber, matchedStudentId });
+    }
+  }
+
   return {
     firstName,
     middleName,
@@ -190,6 +216,7 @@ export function parseApplicationForm(formData: FormData): ParsedApplication {
     medicalConditionsOther,
     familyDoctorName,
     authorizedContacts,
+    siblings,
     error,
   };
 }

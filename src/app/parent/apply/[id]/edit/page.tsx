@@ -44,6 +44,7 @@ export default async function EditApplicationPage({
     primary_contact: submission.primary_contact,
     guardians: submission.guardians,
     authorized_contacts: submission.authorized_contacts,
+    siblings: submission.siblings,
   };
 
   return <ApplicationForm submissionId={submission.id} defaults={defaults} />;
