@@ -14,6 +14,12 @@ export default async function AdminOverviewPage() {
     .eq("id", user!.id)
     .single();
 
+  const { data: school } = await supabase
+    .from("schools")
+    .select("code")
+    .eq("id", profile?.school_id)
+    .single();
+
   const { data: currentYear } = await supabase
     .from("academic_years")
     .select("id, name, start_date, end_date")
@@ -58,6 +64,18 @@ export default async function AdminOverviewPage() {
           </p>
         </div>
       )}
+
+      <div className="border border-zinc-200 rounded-md p-4 mt-4">
+        <p className="text-sm text-zinc-900 font-medium mb-1">
+          Parent application link
+        </p>
+        <p className="text-sm text-zinc-500 mb-2">
+          Share this with parents so they can submit registrations directly.
+        </p>
+        <code className="text-sm bg-zinc-50 border border-zinc-200 rounded px-2 py-1 inline-block">
+          /apply/{school?.code}
+        </code>
+      </div>
     </div>
   );
 }

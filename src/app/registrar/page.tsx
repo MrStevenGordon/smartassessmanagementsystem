@@ -35,10 +35,10 @@ export default async function RegistrarStudentsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-medium text-zinc-900">Students</h1>
         <Link
-          href="/registrar/new"
+          href="/registrar/submissions"
           className="text-sm bg-zinc-900 text-white rounded-md px-4 py-2"
         >
-          Register student
+          Review submissions
         </Link>
       </div>
 
