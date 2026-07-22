@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "School Portal",
-  description: "Student records, attendance, and grades.",
+  title: "Smart Assess Management System",
+  description: "Student records, registration, attendance, and grades.",
 };
 
 export default function RootLayout({
